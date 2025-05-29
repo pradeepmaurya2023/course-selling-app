@@ -5,6 +5,16 @@ const app = express();
 
 const port = process.env.PORT || 3000;
 
+// Importing Routes
+const userRoutes = require('./routes/userRoutes');
+const adminRoutes = require("./routes/adminRoutes");
+const courseRoutes = require("./routes/courseRoutes");
+
+// Using Routes for 
+app.use('/user',userRoutes);
+app.use('/admin',adminRoutes);
+app.use('/courses',courseRoutes);
+
 app.get("/", (req, res) => {
   res.send("Home Route");
 });
