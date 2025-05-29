@@ -6,14 +6,15 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Importing Routes
-const userRoutes = require('./routes/userRoutes');
+const userRoutes = require("./routes/userRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const courseRoutes = require("./routes/courseRoutes");
+const connectDB = require("./config/db");
 
-// Using Routes for 
-app.use('/user',userRoutes);
-app.use('/admin',adminRoutes);
-app.use('/courses',courseRoutes);
+// Using Routes for
+app.use("/user", userRoutes);
+app.use("/admin", adminRoutes);
+app.use("/courses", courseRoutes);
 
 app.get("/", (req, res) => {
   res.send("Home Route");
@@ -21,6 +22,7 @@ app.get("/", (req, res) => {
 
 function main() {
   try {
+    connectDB();
     app.listen(port, () => {
       console.log(`Server is running on http://localhost:${port}.`);
     });
