@@ -5,6 +5,8 @@ const app = express();
 
 const port = process.env.PORT || 3000;
 
+app.use(express.json());
+
 // Importing Routes
 const userRoutes = require("./routes/userRoutes");
 const adminRoutes = require("./routes/adminRoutes");
