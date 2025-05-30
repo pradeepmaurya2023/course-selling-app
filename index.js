@@ -22,9 +22,9 @@ app.get("/", (req, res) => {
   res.send("Home Route");
 });
 
-function main() {
+async function main() {
   try {
-    connectDB();
+    await connectDB();
     app.listen(port, () => {
       console.log(`Server is running on http://localhost:${port}.`);
     });
