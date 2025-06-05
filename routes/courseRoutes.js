@@ -3,6 +3,7 @@ const Course = require("../models/Course");
 
 const courseRouter = Router();
 
+// Fetching all courses for preview
 courseRouter.get("/", async (req, res) => {
   try {
     const courses = await Course.find();
@@ -23,6 +24,7 @@ courseRouter.get("/", async (req, res) => {
   }
 });
 
+// Fetching specific course by ID
 courseRouter.get("/:id", async (req, res) => {
   const id = req.params.id;
   try {
