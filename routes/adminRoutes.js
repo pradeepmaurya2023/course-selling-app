@@ -2,266 +2,180 @@ const { Router } = require("express");
 const { z } = require("zod");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const JWT_ADMIN_PASSWORD = process.env.JWT_ADMIN_PASSWORD;
 const adminAuth = require("../middlewares/adminAuth");
 const Admin = require("../models/Admin");
 const Course = require("../models/Course");
 
 const adminRouter = Router();
 
-// Admin Signup Route
-adminRouter.post("/signup", async (req, res) => {
-  const { name, email, password } = req.body;
+const JWT_SECRET_ADMIN = process.env.JWT_SECRET_ADMIN;
 
-  // Zod schema for request validation
-  const requiredBody = z.object({
-    name: z.string().nonempty("Name is required").min(3).max(30).trim(),
-    email: z.string().email("Invalid email format").trim().min(3).max(30),
-    password: z.string().nonempty("Password is required").trim().min(8).max(30),
+const sendResponse = (res, status, message, data = null) => {
+  res.status(status).json({ message, ...(data && { data }) });
+};
+
+// ✅ Admin Signup
+adminRouter.post("/signup", async (req, res) => {
+  const schema = z.object({
+    name: z.string().nonempty().min(3).max(30).trim(),
+    email: z.string().email().trim().min(3).max(30),
+    password: z.string().nonempty().min(8).max(30).trim(),
   });
 
-  // Validate request
-  const validation = requiredBody.safeParse({ name, email, password });
-
+  const validation = schema.safeParse(req.body);
   if (!validation.success) {
-    console.error("Validation error:", validation.error.flatten());
-    return res.status(400).json({
-      message: "Invalid input",
+    return sendResponse(res, 422, "Invalid input", {
       errors: validation.error.flatten(),
     });
   }
 
-  const {
-    name: validName,
-    email: validEmail,
-    password: validPassword,
-  } = validation.data;
+  const { name, email, password } = validation.data;
 
   try {
-    // Check if email is already registered
-    const existingAdmin = await Admin.findOne({ email: validEmail });
+    const existingAdmin = await Admin.findOne({ email });
     if (existingAdmin) {
-      return res.status(409).json({ message: "Email already in use" });
+      return sendResponse(res, 409, "Email already in use");
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(validPassword, 5);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create and save new admin
-    const admin = new Admin({
-      name: validName,
-      email: validEmail,
-      password: hashedPassword,
-    });
-
+    const admin = new Admin({ name, email, password: hashedPassword });
     await admin.save();
 
-    return res.status(201).json({ message: "Admin signed up successfully" });
+    return sendResponse(res, 201, "Admin signed up successfully");
   } catch (err) {
-    console.error("Error saving to DB:", err);
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("Signup error:", err);
+    return sendResponse(res, 500, "Internal server error");
   }
 });
 
-// Admin Sign In Route
+// ✅ Admin Sign In
 adminRouter.post("/signin", async (req, res) => {
-  const { email, password } = req.body;
-
-  // zod schema for validations
-  const requiredBody = z.object({
-    email: z.string().email("Invalid email format").trim().min(3).max(30),
-    password: z.string().nonempty("Password is required").trim().min(8).max(30),
+  const schema = z.object({
+    email: z.string().email().trim().min(3).max(30),
+    password: z.string().nonempty().min(8).max(30).trim(),
   });
 
-  // Validate request
-  const validation = requiredBody.safeParse({ email, password });
-
+  const validation = schema.safeParse(req.body);
   if (!validation.success) {
-    console.error("Validation error:", validation.error.flatten());
-    return res.status(400).json({
-      message: "Invalid input",
+    return sendResponse(res, 422, "Invalid input", {
       errors: validation.error.flatten(),
     });
   }
 
-  const { email: validEmail, password: validPassword } = validation.data;
+  const { email, password } = validation.data;
 
   try {
-    // check if user is present in database with entered email
-    let user = await Admin.findOne({ email: validEmail });
-    if (!user) {
-      return res.status(403).json({
-        message: "Email not found",
-      });
+    const admin = await Admin.findOne({ email });
+    if (!admin) {
+      return sendResponse(res, 401, "Invalid email or password");
     }
 
-    let authorization = await bcrypt.compare(validPassword, user.password);
-    if (!authorization) {
-      return res.status(403).json({
-        message: "Incorrect Passwrod",
-      });
-    } else {
-      const token = jwt.sign({ id: user._id }, JWT_ADMIN_PASSWORD);
-      res.json({
-        message: "Sign In sucessfull",
-        token: token,
-      });
+    const validPassword = await bcrypt.compare(password, admin.password);
+    if (!validPassword) {
+      return sendResponse(res, 401, "Invalid email or password");
     }
-  } catch (err) {
-    console.log("Error :- ", err.message);
-    res.json({
-      message: err.message,
+
+    const token = jwt.sign({ id: admin._id }, JWT_SECRET_ADMIN, {
+      expiresIn: "1h",
     });
+
+    return sendResponse(res, 200, "Sign in successful", { token });
+  } catch (err) {
+    console.error("Signin error:", err);
+    return sendResponse(res, 500, "Internal server error");
   }
 });
 
-// Admin creating a course
+// ✅ Admin Create Course
 adminRouter.post("/course", adminAuth, async (req, res) => {
-  const { title, description, imageUrl, price } = req.body;
-  const courseSchema = z.object({
+  const schema = z.object({
     title: z.string().nonempty(),
     description: z.string().nonempty(),
     imageUrl: z.string().nonempty(),
     price: z.number().min(499).max(6999),
   });
 
-  const validation = courseSchema.safeParse({
-    title,
-    description,
-    imageUrl,
-    price,
-  });
+  const validation = schema.safeParse(req.body);
   if (!validation.success) {
-    console.log(validation.error.flatten());
-    return res.json({
-      message: `Validation Error : ${validation.error.flatten()}`,
+    return sendResponse(res, 422, "Validation error", {
+      errors: validation.error.flatten(),
     });
   }
-  console.log(req.id.id);
+
   try {
-    let newCourse = new Course({
-      title: validation.data.title,
-      description: validation.data.description,
-      price: validation.data.price,
-      imageUrl: validation.data.imageUrl,
-      createdBy: `${req.id.id}`,
+    const course = new Course({
+      ...validation.data,
+      createdBy: req.id.id,
     });
 
-    await newCourse.save();
-    res.json({
-      message: "Course Added Successfully",
-    });
+    await course.save();
+    return sendResponse(res, 201, "Course added successfully");
   } catch (err) {
-    console.log("Error while creating a course : ", err.message);
-    res.json({
-      message: "Error while creating course",
-    });
+    console.error("Create course error:", err);
+    return sendResponse(res, 500, "Error while creating course");
   }
 });
 
-// Admin updating a course
+// ✅ Admin Update Course
 adminRouter.put("/course/:id", adminAuth, async (req, res) => {
-  const { title, description, imageUrl, price } = req.body;
   const courseId = req.params.id;
   const adminId = req.id.id;
 
-  // Validation Schema for data
-  const courseSchema = z.object({
+  const schema = z.object({
     title: z.string().nonempty(),
     description: z.string().nonempty(),
     imageUrl: z.string().nonempty(),
     price: z.number().min(499).max(6999),
   });
 
-  // Validating Data
-  const validation = courseSchema.safeParse({
-    title,
-    description,
-    imageUrl,
-    price,
-  });
-  // if validation is not successful
+  const validation = schema.safeParse(req.body);
   if (!validation.success) {
-    console.log(validation.error.flatten());
-    return res.json({
-      message: `Validation Error : ${validation.error.flatten()}`,
+    return sendResponse(res, 422, "Validation error", {
+      errors: validation.error.flatten(),
     });
   }
 
-  // fetching requested admin id
-  console.log(req.id.id);
-  console.log(courseId);
-
   try {
-    // fetching course by id
-    let course = await Course.findById(courseId);
-    // if course is not found returning response
+    const course = await Course.findById(courseId);
     if (!course) {
-      return res.status(403).json({
-        message: "Course is not found",
-      });
+      return sendResponse(res, 404, "Course not found");
     }
-    // if course is not created by logged in admin returning response
-    if (adminId != course.createdBy) {
-      return res.json({
-        message: "You are not authorised to update this course",
-      });
-    }
-    // updating course if evrything is fine
-    const updatedCourse = {
-      title: validation.data.title,
-      description: validation.data.description,
-      imageUrl: validation.data.imageUrl,
-      price: validation.data.price,
-      createdBy: adminId,
-    };
 
-    let result = await Course.findByIdAndUpdate(courseId, updatedCourse);
-    console.log(result);
-    res.json({
-      message: "Course Updated Successfuly",
-    });
+    if (course.createdBy.toString() !== adminId) {
+      return sendResponse(res, 403, "You are not authorized to update this course");
+    }
+
+    await Course.findByIdAndUpdate(courseId, { ...validation.data });
+
+    return sendResponse(res, 200, "Course updated successfully");
   } catch (err) {
-    console.log("Error while Updating Course :- ", err.message);
+    console.error("Update course error:", err);
+    return sendResponse(res, 500, "Error while updating course");
   }
 });
 
-// deleting Courses
+// ✅ Admin Delete Course
 adminRouter.delete("/course/:id", adminAuth, async (req, res) => {
   const courseId = req.params.id;
   const adminId = req.id.id;
 
-  // fetching requested admin id
-  console.log(req.id.id);
-  console.log(courseId);
-
   try {
-    // fetching course by id
-    let course = await Course.findById(courseId);
-    // if course is not found returning response
+    const course = await Course.findById(courseId);
     if (!course) {
-      return res.status(403).json({
-        message: "Course is not found",
-      });
-    }
-    // if course is not created by logged in admin returning response
-    if (adminId != course.createdBy) {
-      return res.json({
-        message: "You are not authorised to delete this course",
-      });
+      return sendResponse(res, 404, "Course not found");
     }
 
-    // delete specific course
-    let result = await Course.findByIdAndDelete(courseId);
-    console.log(result);
-    res.json({
-      message: "Course Deleted Successfuly",
-    });
+    if (course.createdBy.toString() !== adminId) {
+      return sendResponse(res, 403, "You are not authorized to delete this course");
+    }
+
+    await Course.findByIdAndDelete(courseId);
+
+    return sendResponse(res, 200, "Course deleted successfully");
   } catch (err) {
-    console.log("Error while Deleting Course :- ", err.message);
-    res.json({
-      message: "Could not find course for given Id",
-    });
+    console.error("Delete course error:", err);
+    return sendResponse(res, 500, "Error while deleting course");
   }
 });
 

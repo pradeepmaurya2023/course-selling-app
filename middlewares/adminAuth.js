@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const JWT_ADMIN_PASSWORD = process.env.JWT_ADMIN_PASSWORD;
+const JWT_SECRET_ADMIN = process.env.JWT_SECRET_ADMIN;
 
 function adminAuth(req, res, next) {
   const authHeader = req.headers.authorization;

@@ -3,46 +3,40 @@ const Course = require("../models/Course");
 
 const courseRouter = Router();
 
-// Fetching all courses for preview
+const sendResponse = (res, status, message, data = null) => {
+  res.status(status).json({
+    success: status < 400,
+    message,
+    ...(data && { data }),
+  });
+};
+
+// ✅ Fetch all courses
 courseRouter.get("/", async (req, res) => {
   try {
     const courses = await Course.find();
-    if (courses.length < 1) {
-      return res.status(403).json({
-        message: "Courses Not Found",
-        courses: [],
-      });
+    if (courses.length === 0) {
+      return sendResponse(res, 200, "No courses available", { courses: [] });
     }
-    res.json({
-      courses: courses,
-    });
+    return sendResponse(res, 200, "Courses fetched successfully", { courses });
   } catch (err) {
-    console.log("Error while Fetching Courses : ", err.message);
-    res.json({
-      message: "Error While Fetching Courses.",
-    });
+    console.error("Error while fetching courses:", err.message);
+    return sendResponse(res, 500, "Error while fetching courses");
   }
 });
 
-// Fetching specific course by ID
+// ✅ Fetch specific course by ID
 courseRouter.get("/:id", async (req, res) => {
   const id = req.params.id;
   try {
-    let course = await Course.findById(id);
+    const course = await Course.findById(id);
     if (!course) {
-      return res.json({
-        message: "Course is not found by ID",
-      });
+      return sendResponse(res, 404, "Course not found");
     }
-    res.json({
-      message: `Your course for id : ${id}`,
-      course: course,
-    });
+    return sendResponse(res, 200, `Course fetched for ID: ${id}`, { course });
   } catch (err) {
-    console.log(`Error while fetching course by ID :- `, err.message);
-    res.json({
-      message: err.message,
-    });
+    console.error("Error while fetching course by ID:", err.message);
+    return sendResponse(res, 500, "Error while fetching course");
   }
 });
 
