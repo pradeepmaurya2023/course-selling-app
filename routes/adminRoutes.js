@@ -2,8 +2,10 @@ const { Router } = require("express");
 const { z } = require("zod");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const JWT_ADMIN_PASSWORD = "AdminPasskey";
+const JWT_ADMIN_PASSWORD = process.env.JWT_ADMIN_PASSWORD;
+const adminAuth = require("../middlewares/adminAuth");
 const Admin = require("../models/Admin");
+const Course = require("../models/Course");
 
 const adminRouter = Router();
 
@@ -113,19 +115,77 @@ adminRouter.post("/signin", async (req, res) => {
   }
 });
 
-adminRouter.post("/course", (req, res) => {
-  res.json({
-    message: "Admin Course Create Endpoint",
+adminRouter.post("/course", adminAuth, async (req, res) => {
+  const { title, description, imageUrl, price } = req.body;
+  const courseSchema = z.object({
+    title: z.string().nonempty(),
+    description: z.string().nonempty(),
+    imageUrl: z.string().nonempty(),
+    price: z.number().min(499).max(6999),
   });
+
+  const validation = courseSchema.safeParse({
+    title,
+    description,
+    imageUrl,
+    price,
+  });
+  if (!validation.success) {
+    console.log(validation.error.flatten());
+    return res.json({
+      message: `Validation Error : ${validation.error.flatten()}`,
+    });
+  }
+  console.log(req.id.id);
+  try {
+    let newCourse = new Course({
+      title: validation.data.title,
+      description: validation.data.description,
+      price: validation.data.price,
+      imageUrl: validation.data.imageUrl,
+      createdBy: `${req.id.id}`,
+    });
+
+    await newCourse.save();
+    res.json({
+      message: "Course Added Successfully",
+    });
+  } catch (err) {
+    console.log("Error while creating a course : ", err.message);
+    res.json({
+      message: "Error while creating course",
+    });
+  }
 });
 
-adminRouter.put("/course/:id", (req, res) => {
-  res.json({
-    message: "Admin Course Update Endpoint",
+adminRouter.put("/course/:id", adminAuth, async (req, res) => {
+  const { title, description, imageUrl, price } = req.body;
+  const courseId = req.params.id;
+  const courseSchema = z.object({
+    title: z.string().nonempty(),
+    description: z.string().nonempty(),
+    imageUrl: z.string().nonempty(),
+    price: z.number().min(499).max(6999),
   });
+
+  const validation = courseSchema.safeParse({
+    title,
+    description,
+    imageUrl,
+    price,
+  });
+  if (!validation.success) {
+    console.log(validation.error.flatten());
+    return res.json({
+      message: `Validation Error : ${validation.error.flatten()}`,
+    });
+  }
+  console.log(req.id.id);
+  let course = Course.findById(courseId);
+  console.log(course);
 });
 
-adminRouter.delete("/course/:id", (req, res) => {
+adminRouter.delete("/course/:id", adminAuth, async (req, res) => {
   res.json({
     message: "Admin Course Delete Endpoint",
   });
