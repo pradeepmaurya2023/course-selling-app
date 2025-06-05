@@ -1,18 +1,47 @@
-const {Router} = require('express');
+const { Router } = require("express");
+const Course = require("../models/Course");
 
 const courseRouter = Router();
 
-courseRouter.get('/',(req,res)=>{
+courseRouter.get("/", async (req, res) => {
+  try {
+    const courses = await Course.find();
+    if (courses.length < 1) {
+      return res.status(403).json({
+        message: "Courses Not Found",
+        courses: [],
+      });
+    }
     res.json({
-        message : "Gettting all the courses"
-    })
-})
+      courses: courses,
+    });
+  } catch (err) {
+    console.log("Error while Fetching Courses : ", err.message);
+    res.json({
+      message: "Error While Fetching Courses.",
+    });
+  }
+});
 
-courseRouter.get('/:id',(req,res)=>{
-    const id = req.params.id;
+courseRouter.get("/:id", async (req, res) => {
+  const id = req.params.id;
+  try {
+    let course = await Course.findById(id);
+    if (!course) {
+      return res.json({
+        message: "Course is not found by ID",
+      });
+    }
     res.json({
-        message : `Course detaild of ${id}`
-    })
-})
+      message: `Your course for id : ${id}`,
+      course: course,
+    });
+  } catch (err) {
+    console.log(`Error while fetching course by ID :- `, err.message);
+    res.json({
+      message: err.message,
+    });
+  }
+});
 
 module.exports = courseRouter;
