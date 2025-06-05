@@ -115,6 +115,7 @@ adminRouter.post("/signin", async (req, res) => {
   }
 });
 
+// Admin creating a course
 adminRouter.post("/course", adminAuth, async (req, res) => {
   const { title, description, imageUrl, price } = req.body;
   const courseSchema = z.object({
@@ -158,9 +159,13 @@ adminRouter.post("/course", adminAuth, async (req, res) => {
   }
 });
 
+// Admin updating a course
 adminRouter.put("/course/:id", adminAuth, async (req, res) => {
   const { title, description, imageUrl, price } = req.body;
   const courseId = req.params.id;
+  const adminId = req.id.id;
+
+  // Validation Schema for data
   const courseSchema = z.object({
     title: z.string().nonempty(),
     description: z.string().nonempty(),
@@ -168,27 +173,96 @@ adminRouter.put("/course/:id", adminAuth, async (req, res) => {
     price: z.number().min(499).max(6999),
   });
 
+  // Validating Data
   const validation = courseSchema.safeParse({
     title,
     description,
     imageUrl,
     price,
   });
+  // if validation is not successful
   if (!validation.success) {
     console.log(validation.error.flatten());
     return res.json({
       message: `Validation Error : ${validation.error.flatten()}`,
     });
   }
+
+  // fetching requested admin id
   console.log(req.id.id);
-  let course = Course.findById(courseId);
-  console.log(course);
+  console.log(courseId);
+
+  try {
+    // fetching course by id
+    let course = await Course.findById(courseId);
+    // if course is not found returning response
+    if (!course) {
+      return res.status(403).json({
+        message: "Course is not found",
+      });
+    }
+    // if course is not created by logged in admin returning response
+    if (adminId != course.createdBy) {
+      return res.json({
+        message: "You are not authorised to update this course",
+      });
+    }
+    // updating course if evrything is fine
+    const updatedCourse = {
+      title: validation.data.title,
+      description: validation.data.description,
+      imageUrl: validation.data.imageUrl,
+      price: validation.data.price,
+      createdBy: adminId,
+    };
+
+    let result = await Course.findByIdAndUpdate(courseId, updatedCourse);
+    console.log(result);
+    res.json({
+      message: "Course Updated Successfuly",
+    });
+  } catch (err) {
+    console.log("Error while Updating Course :- ", err.message);
+  }
 });
 
+// deleting Courses
 adminRouter.delete("/course/:id", adminAuth, async (req, res) => {
-  res.json({
-    message: "Admin Course Delete Endpoint",
-  });
+  const courseId = req.params.id;
+  const adminId = req.id.id;
+
+  // fetching requested admin id
+  console.log(req.id.id);
+  console.log(courseId);
+
+  try {
+    // fetching course by id
+    let course = await Course.findById(courseId);
+    // if course is not found returning response
+    if (!course) {
+      return res.status(403).json({
+        message: "Course is not found",
+      });
+    }
+    // if course is not created by logged in admin returning response
+    if (adminId != course.createdBy) {
+      return res.json({
+        message: "You are not authorised to delete this course",
+      });
+    }
+
+    // delete specific course
+    let result = await Course.findByIdAndDelete(courseId);
+    console.log(result);
+    res.json({
+      message: "Course Deleted Successfuly",
+    });
+  } catch (err) {
+    console.log("Error while Deleting Course :- ", err.message);
+    res.json({
+      message: "Could not find course for given Id",
+    });
+  }
 });
 
 module.exports = adminRouter;
