@@ -1,7 +1,6 @@
 const { z } = require("zod");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const userAuth = require("../middlewares/userAuth");
 const JWT_SECRET_USER = process.env.JWT_SECRET_USER;
 
 const User = require("../models/User");

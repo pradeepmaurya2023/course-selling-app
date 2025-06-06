@@ -1,4 +1,5 @@
 const { Router } = require("express");
+const adminAuth = require("../middlewares/adminAuth");
 const {
   adminSignup,
   adminSignin,
