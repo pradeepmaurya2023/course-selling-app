@@ -91,7 +91,7 @@ UserRouter.post("/signin", async (req, res) => {
 // User purchases a course
 UserRouter.post("/course/:id/purchase", userAuth, async (req, res) => {
   const courseId = req.params.id;
-  const userId = req.id.id;
+  const userId = req.id;
 
   try {
     let course = await Course.findById(courseId);
@@ -110,7 +110,7 @@ UserRouter.post("/course/:id/purchase", userAuth, async (req, res) => {
 
 // User Accessing all the courses purchased by him
 UserRouter.get("/purchases", userAuth, async (req, res) => {
-  const userId = req.id.id;
+  const userId = req.id;
 
   try {
     let courses = await Purchases.find({ userId: userId });

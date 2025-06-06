@@ -14,7 +14,7 @@ function userAuth(req, res, next) {
   console.log(`JWT TOKEN : ${token}`);
   try {
     const decodedToken = jwt.verify(token, JWT_SECRET_USER);
-    req.id = decodedToken;
+    req.id = decodedToken.id;
     next();
   } catch (err) {
     return res.status(403).json({

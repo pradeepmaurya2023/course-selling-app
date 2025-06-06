@@ -106,7 +106,7 @@ adminRouter.post("/course", adminAuth, async (req, res) => {
   try {
     const course = new Course({
       ...validation.data,
-      createdBy: req.id.id,
+      createdBy: req.id,
     });
 
     await course.save();
@@ -120,7 +120,7 @@ adminRouter.post("/course", adminAuth, async (req, res) => {
 // ✅ Admin Update Course
 adminRouter.put("/course/:id", adminAuth, async (req, res) => {
   const courseId = req.params.id;
-  const adminId = req.id.id;
+  const adminId = req.id;
 
   const schema = z.object({
     title: z.string().nonempty(),
@@ -158,7 +158,7 @@ adminRouter.put("/course/:id", adminAuth, async (req, res) => {
 // ✅ Admin Delete Course
 adminRouter.delete("/course/:id", adminAuth, async (req, res) => {
   const courseId = req.params.id;
-  const adminId = req.id.id;
+  const adminId = req.id;
 
   try {
     const course = await Course.findById(courseId);
