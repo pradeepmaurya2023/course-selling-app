@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
-const JWT_SECRET_ADMIN = process.env.JWT_SECRET_ADMIN;
+const JWT_SECRET_USER = process.env.JWT_SECRET_USER;
 
-function adminAuth(req, res, next) {
+function userAuth(req, res, next) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -13,7 +13,7 @@ function adminAuth(req, res, next) {
   const token = authHeader.split(" ")[1];
   console.log(`JWT TOKEN : ${token}`);
   try {
-    const decodedToken = jwt.verify(token, JWT_SECRET_ADMIN);
+    const decodedToken = jwt.verify(token, JWT_SECRET_USER);
     req.id = decodedToken;
     next();
   } catch (err) {
@@ -23,4 +23,4 @@ function adminAuth(req, res, next) {
   }
 }
 
-module.exports = adminAuth;
+module.exports = userAuth;
